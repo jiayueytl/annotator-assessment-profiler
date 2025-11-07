@@ -21,13 +21,34 @@ def clean_answer(ans):
     elif re.search(r'FAIL', ans_str): return 'FAIL'
     return None
 
+def clean_answer(ans):
+    if pd.isna(ans) or ans is None: return None
+    ans_str = str(ans).upper().strip()
+    if re.search(r'PASS', ans_str): return 'PASS'
+    elif re.search(r'FAIL', ans_str): return 'FAIL'
+    return None
+
 def score_match(response_ans, key_ans):
     clean_response = clean_answer(response_ans)
     clean_key = clean_answer(key_ans)
-    if clean_response is None or clean_key is None: return np.nan
-    if clean_key == clean_response: return 1.0
-    if clean_key == 'FAIL' and clean_response == 'PASS': return 0.0
-    elif clean_key == 'PASS' and clean_response == 'FAIL': return 0.5
+
+    # NEW LOGIC: If both key and response are empty/null (None after cleaning), score 1.0
+    if clean_key is None and clean_response is None: 
+        return 1.0
+        
+    # If only one is None, we cannot score it (or it's a mismatch if you prefer 0.0)
+    # Sticking to np.nan if only one is missing, as per the original intent (unscorable/NA).
+    if clean_response is None or clean_key is None: 
+        return np.nan 
+
+    # Remaining scoring logic (PASS/FAIL comparison)
+    if clean_key == clean_response: 
+        return 1.0
+    if clean_key == 'FAIL' and clean_response == 'PASS': 
+        return 0.0
+    elif clean_key == 'PASS' and clean_response == 'FAIL': 
+        return 0.5
+        
     return np.nan
 
 def encode_confidence(value):
@@ -106,7 +127,6 @@ def preprocess_responses(responses_raw):
     responses = responses.filter(items=scoring_columns)
     return responses
 
-
 def generate_narrative_summary(responses_df_input, answer_key_df):
     responses_df = responses_df_input.copy()
     languages = ['malay', 'english', 'chinese']
@@ -117,31 +137,57 @@ def generate_narrative_summary(responses_df_input, answer_key_df):
         q_score_cols = [col for col in row.index if col.startswith(f'{lang}_') and col.endswith('_score')]
         lang_total_score = row.get(f'{lang}_scores', 0.0)
         
+        # Check Confidence
+        confidence_col = f'{lang}_confidence'
+        is_confident = row.get(confidence_col) == 1
+        
+        confidence_header = ""
+        if not is_confident:
+             # Add a warning note at the top of the narrative
+             confidence_header = "⚠️ **Note:** Annotator marked **NOT CONFIDENT** in this language.\n\n"
+        
         if not q_score_cols:
              return f"Total Score: **0.0** / 0 questions. No scorable questions for {lang}."
 
         for score_col in q_score_cols:
+            # ... (rest of the question processing logic is unchanged)
             score = row.get(score_col)
+            question_key = score_col.replace('_score', '')
+            key_ans = key_map.get(question_key, 'KEY_NOT_FOUND')
+            response_ans = row.get(question_key, 'RESPONSE_NOT_FOUND')
             
-            if score == 0.5 or score == 0.0:
-                question_key = score_col.replace('_score', '')
-                key_ans = key_map.get(question_key, 'KEY_NOT_FOUND')
-                response_ans = row.get(question_key, 'RESPONSE_NOT_FOUND')
-                
-                clean_key = clean_answer(key_ans)
-                clean_response = clean_answer(response_ans)
+            # Determine status label
+            if score == 1.0:
+                status = "Match"
+            elif score == 0.5:
+                status = "Partial Mismatch (0.5)"
+            elif score == 0.0:
+                status = "Full Mismatch (0.0)"
+            elif pd.isna(score):
+                status = "Unscorable (NA)"
+            else:
+                status = "Unknown Score"
 
-                explanation = f"Key: `{clean_key}` (Original: '{key_ans}'), Response: `{clean_response}` (Original: '{response_ans}')"
-                
-                lang_narrative_list.append(
-                    f"* **{question_key}** (Score: **{score}**): Mismatch: {explanation}"
-                )
+            # Create detailed explanation string (using triple quotes for multi-line format)
+            explanation = f"""
+Answer: '{key_ans}', 
+Response: '{response_ans}'
+"""
+            
+            # List item format: **Q_KEY** (Status: **Score**) -> Explanation
+            lang_narrative_list.append(
+                f"* **{question_key}** ({status} | Score: **{score:.1f}**): {explanation.strip()}"
+            )
 
-        if lang_narrative_list:
-            header = f"Total Score: **{lang_total_score:.1f}** / {len(q_score_cols)} questions. Mismatches ({len(lang_narrative_list)}):"
-            return header + "\n\n" + "\n".join(lang_narrative_list)
-        else:
-            return f"Total Score: **{lang_total_score:.1f}** / {len(q_score_cols)} questions. (All Perfect Matches - Score 1.0)"
+        mismatch_count = len([s for s in row[q_score_cols].values if s == 0.5 or s == 0.0])
+        
+        header = f"Total Score: **{lang_total_score:.1f}** / {len(q_score_cols)} questions."
+        
+        if mismatch_count > 0:
+            header += f" ({mismatch_count} Mismatches)" 
+
+        # Prepend the confidence warning
+        return confidence_header + header + "\n\n" + "\n".join(lang_narrative_list)
 
     for lang in languages:
         responses_df[f'{lang}_narrative'] = responses_df.apply(
@@ -155,30 +201,47 @@ def calculate_all_scores(responses_df_input, answer_key_df):
     responses_df = responses_df_input.copy()
     answer_key_df['clean_answer'] = answer_key_df['answer'].apply(clean_answer)
     
-    # Calculate Individual Question Scores
+    # Calculate Individual Question Scores (Standard)
     for _, row in answer_key_df.iterrows():
         q_key = row['question_key']
         clean_key = row['clean_answer']
         if q_key in responses_df.columns:
             score_col_name = f"{q_key}_score"
+            # Calculate standard score first (including 1.0 for nan/nan match)
             responses_df[score_col_name] = responses_df[q_key].apply(lambda resp_ans: score_match(resp_ans, clean_key))
             
-    # Calculate Total Language Scores
-    lang_prefixes = ['malay_', 'english_', 'chinese_']
+    # Calculate Total Language Scores (Now implementing the 0.0 penalty for Not Confident)
+    languages = ['malay', 'english', 'chinese']
     final_score_cols = []
-    for prefix in lang_prefixes:
+    
+    for lang in languages:
+        prefix = f'{lang}_'
+        confidence_col = f'{lang}_confidence'
+        std_score_col_name = f'{prefix}scores'
+        
         all_score_cols = [col for col in responses_df.columns if col.endswith('_score')]
         lang_score_cols = [col for col in all_score_cols if col.startswith(prefix)]
-        new_score_col_name = f'{prefix}scores'
+
+        # --- NEW LOGIC: Apply 0.0 penalty to individual question scores ---
+        if confidence_col in responses_df.columns:
+            is_not_confident = (responses_df[confidence_col] == 0)
+            
+            if is_not_confident.any():
+                 # For all rows where the annotator is NOT CONFIDENT (0), 
+                 # set their individual question scores for this language to 0.0
+                 responses_df.loc[is_not_confident, lang_score_cols] = 0.0
+        # ------------------------------------------------------------------
         
         if lang_score_cols:
-            responses_df[new_score_col_name] = responses_df[lang_score_cols].sum(axis=1).round(1)
+            # Recalculate Total Score based on possibly penalized individual scores
+            responses_df[std_score_col_name] = responses_df[lang_score_cols].sum(axis=1).round(1)
         else:
-            responses_df[new_score_col_name] = 0.0
+            responses_df[std_score_col_name] = 0.0
             
-        final_score_cols.append(new_score_col_name)
-        
+        final_score_cols.append(std_score_col_name)
+
     # Generate Narrative Summary
+    # The narrative function will now use the 0.0 score from the penalized columns
     narrative_df = generate_narrative_summary(responses_df.copy(), answer_key_df) 
     
     # Final Output Construction
@@ -309,7 +372,7 @@ else:
                 for index, row in final_output.iterrows():
                     with st.expander(f"👤 **{row['name']}** ({row['ic_number']}) | Total Score: **{row[SCORE_COLS].sum():.1f}**"):
                         
-                        st.markdown(f"**Confident in:** {row['Confident Lang Count']} of 3 languages (1=Yes)")
+                        st.markdown(f"**Confident in:** {row['Confident Lang Count']} of 3 languages")
 
                         # 1 Row, 3 Columns for Breakdowns
                         col_m, col_e, col_c = st.columns(3)
