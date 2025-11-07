@@ -324,6 +324,7 @@ else:
                             
                         with col_c:
                             st.markdown("### 🇨🇳 Chinese Score")
+                            st.markdown(row['Chinese Breakdown'])
                             
 
                 # Download button
