@@ -10,9 +10,7 @@ st.set_page_config(page_title="Annotator Assessment Profiler", layout="wide")
 
 # --- CONFIGURATION ---
 API_URL = "https://dot.ytlailabs.tech/api/v1/auth/token"
-# NOTE: Adjusted the path format for better compatibility, 
-# but keep your path structure: r'answer\answer_key.csv'
-ANSWER_KEY_FILE = r'/workspaces/annotator-assessment-profiler/answer/answer_key.csv' 
+ANSWER_KEY_FILE = 'answer/answer_key.csv' 
 
 
 # --- Utility Functions (Same) ---
