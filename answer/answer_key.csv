@@ -1,0 +1,46 @@
+language	question_num	answer_type	answer	question_key
+malay	1	prompt_status	FAIL(Not Usable)	malay_q1_prompt_status
+malay	2	prompt_status	PASS	malay_q2_prompt_status
+malay	3	prompt_status	PASS	malay_q3_prompt_status
+malay	4	prompt_status	PASS	malay_q4_prompt_status
+malay	5	prompt_status	FAIL(Minor rewrite)	malay_q5_prompt_status
+malay	1	response_status		malay_q1_response_status
+malay	2	response_status	FAIL(Need Improvement)	malay_q2_response_status
+malay	3	response_status	PASS(No Changes)	malay_q3_response_status
+malay	4	response_status	FAIL	malay_q4_response_status
+malay	5	response_status	FAIL(Need Improvement)	malay_q5_response_status
+malay	1	response_rewrite_effort		malay_q1_response_rewrite_effort
+malay	2	response_rewrite_effort	Minor (<=2 sentences)	malay_q2_response_rewrite_effort
+malay	3	response_rewrite_effort		malay_q3_response_rewrite_effort
+malay	4	response_rewrite_effort	Major (>2 sentences)	malay_q4_response_rewrite_effort
+malay	5	response_rewrite_effort	Minor (<=2 sentences)	malay_q5_response_rewrite_effort
+english	1	prompt_status	PASS	english_q1_prompt_status
+english	2	prompt_status	FAIL(Not Usable)	english_q2_prompt_status
+english	3	prompt_status	FAIL(Not Usable)	english_q3_prompt_status
+english	4	prompt_status	PASS	english_q4_prompt_status
+english	5	prompt_status	PASS	english_q5_prompt_status
+english	1	response_status	FAIL	english_q1_response_status
+english	2	response_status	FAIL(Need Improvement)	english_q2_response_status
+english	3	response_status		english_q3_response_status
+english	4	response_status		english_q4_response_status
+english	5	response_status		english_q5_response_status
+english	1	response_rewrite_effort	Major (>2 sentences)	english_q1_response_rewrite_effort
+english	2	response_rewrite_effort		english_q2_response_rewrite_effort
+english	3	response_rewrite_effort		english_q3_response_rewrite_effort
+english	4	response_rewrite_effort		english_q4_response_rewrite_effort
+english	5	response_rewrite_effort		english_q5_response_rewrite_effort
+chinese	1	prompt_status	FAIL(Not Usable)	chinese_q1_prompt_status
+chinese	2	prompt_status	PASS	chinese_q2_prompt_status
+chinese	3	prompt_status	FAIL(Minor rewrite)	chinese_q3_prompt_status
+chinese	4	prompt_status	PASS	chinese_q4_prompt_status
+chinese	5	prompt_status	PASS	chinese_q5_prompt_status
+chinese	1	response_status		chinese_q1_response_status
+chinese	2	response_status	FAIL	chinese_q2_response_status
+chinese	3	response_status	FAIL	chinese_q3_response_status
+chinese	4	response_status	FAIL(Need Improvement)	chinese_q4_response_status
+chinese	5	response_status	PASS(No Changes)	chinese_q5_response_status
+chinese	1	response_rewrite_effort		chinese_q1_response_rewrite_effort
+chinese	2	response_rewrite_effort	Major (>2 sentences)	chinese_q2_response_rewrite_effort
+chinese	3	response_rewrite_effort	Major (>2 sentences)	chinese_q3_response_rewrite_effort
+chinese	4	response_rewrite_effort	Minor (<=2 sentences)	chinese_q4_response_rewrite_effort
+chinese	5	response_rewrite_effort		chinese_q5_response_rewrite_effort
