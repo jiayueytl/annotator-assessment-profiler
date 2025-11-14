@@ -394,7 +394,7 @@ else:
         # NOTE: Using header=None and names due to previous multi-column structure
         answer_key_df = pd.read_csv(
             ANSWER_KEY_FILE, 
-            sep='\t', 
+            # sep='\t', 
             header=None, 
             skiprows=1,
             names=['language', 'question_num', 'answer_type', 'answer', 'question_key']
@@ -419,6 +419,7 @@ else:
             try:
                 responses_raw = pd.read_csv(response_file, header=[0, 1])
                 processed = preprocess_responses(responses_raw)
+                st.write(processed)
                 final_output = calculate_all_scores(processed, answer_key_df)
 
                 st.success("✅ Processing complete and results generated!")
