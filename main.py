@@ -419,7 +419,8 @@ else:
             try:
                 responses_raw = pd.read_csv(response_file, header=[0, 1])
                 processed = preprocess_responses(responses_raw)
-                st.write(processed)
+                with st.expander("Details of Processed Data"):
+                    st.write(processed)
                 final_output = calculate_all_scores(processed, answer_key_df)
 
                 st.success("✅ Processing complete and results generated!")
