@@ -93,8 +93,13 @@ RESPONSE_STATUS_PATTERN = "evaluate the quality of the response.*in the bolded b
 def preprocess_responses(responses_raw):
     """Cleans and reshapes the raw CSV input into a usable DataFrame."""
     responses_raw.columns = [' | '.join(col).strip() if isinstance(col, tuple) else col for col in responses_raw.columns.values]
+    
+    # --- detect datetime column before we rename anything ---
+    datetime_col = detect_datetime_col(responses_raw)
+
     responses = responses_raw.copy()
     column_map = {}
+    
 
     for old_col in responses.columns:
         lower_col = old_col.lower().strip()
@@ -123,6 +128,12 @@ def preprocess_responses(responses_raw):
     
     # Filter the DataFrame to only include relevant columns
     responses = responses.filter(items=scoring_columns)
+    
+    if datetime_col:
+        responses["completion_time"] = pd.to_datetime(
+            responses_raw[datetime_col], errors="coerce"
+        )
+
     return responses
 
 def generate_narrative_summary(responses_df_input, answer_key_df):
@@ -360,6 +371,20 @@ def apply_hierarchical_scoring(results_df, malay_pass_threshold=8.0, malay_revie
         ascending=[True, False]
     )
 
+def detect_datetime_col(df):
+    """
+    Detects a datetime column in a multi-index or flattened-column CSV.
+
+    Returns:
+        column_name (str) or None
+    """
+    for col in df.columns:
+        col_str = " | ".join(col).lower() if isinstance(col, tuple) else str(col).lower()
+        if "completion time" in col_str:
+            return col  # return actual column object
+    return None
+
+
 # --- Streamlit Layout ---
 st.title("🔐 Annotator Assessment Profiler Login")
 
@@ -419,10 +444,26 @@ else:
             try:
                 responses_raw = pd.read_csv(response_file, header=[0, 1])
                 processed = preprocess_responses(responses_raw)
+                if "completion_time" in processed.columns:
+                    min_dt = processed["completion_time"].min()
+                    max_dt = processed["completion_time"].max()
+
+                    date_range = st.date_input(
+                        "Filter by completion date",
+                        value=[min_dt.date(), max_dt.date()],
+                        min_value=min_dt.date(),
+                        max_value=max_dt.date()
+                    )
+
+                    start, end = date_range
+                    mask = processed["completion_time"].dt.date.between(start, end)
+                    processed = processed[mask]
+
                 with st.expander("Details of Processed Data"):
                     st.write(processed)
-                final_output = calculate_all_scores(processed, answer_key_df)
 
+                final_output = calculate_all_scores(processed, answer_key_df)
+                
                 st.success("✅ Processing complete and results generated!")
 
                 SCORE_COLS = ['Malay Score (Total)', 'English Score (Total)', 'Chinese Score (Total)']
